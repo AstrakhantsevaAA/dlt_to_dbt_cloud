@@ -10,8 +10,7 @@
 {{ config(materialized='table') }}
 
 
-select *
-from pokemon_data.pokemon
+SELECT * FROM `dlt-dev-external.pokemon_data.pokemon` LIMIT 1000
 
 /*
     Uncomment the line below to remove records with null `id` values
