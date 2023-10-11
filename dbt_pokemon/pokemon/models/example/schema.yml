@@ -6,3 +6,4 @@ models:
     description: "A starter dbt model"
 
   - name: my_second_dbt_model
+    description: "the second dbt model"
