@@ -9,7 +9,7 @@
 
 
 select *
-from `dlt-dev-external.pokemon_data.pokemon`
+from {{ source("pokemon_data", "pokemon") }}
 limit
     1000
 
