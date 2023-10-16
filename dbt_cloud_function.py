@@ -1,77 +1,85 @@
 import time
+from typing import Any, Dict, Optional
 
 import dlt
 from dlt.common.configuration.inject import with_config
 from dlt.sources.helpers import requests
 
-
 BASE_URL = "https://cloud.getdbt.com/api"
 
 
 class DBTCloudClient:
-    def __init__(self, api_token: str, account_id: str, job_id: str, base_api_url: str = BASE_URL,):
+    def __init__(
+        self,
+        api_token: str,
+        account_id: str,
+        job_id: str,
+        base_api_url: str = BASE_URL,
+    ):
         self.api_version = "v2"
         self.base_api_url = f"{base_api_url}/{self.api_version}"
         self._api_token = api_token
         self._headers = {
-            'Content-Type': 'application/json',
-            'Authorization': f'Token {self._api_token}'
+            "Content-Type": "application/json",
+            "Authorization": f"Token {self._api_token}",
+            "Accept": "application/json",
         }
         self.account_id = account_id
         self.job_id = job_id
-        self.jobs_url = f"accounts/{self.account_id}/jobs/{self.job_id}/run"
 
-    def get_endpoint(self, endpoint: str):
+        self.jobs_url = f"accounts/{self.account_id}/jobs/{self.job_id}/run"
+        self.runs_url = f"accounts/{self.account_id}/runs"
+
+    def get_endpoint(self, endpoint: str) -> Dict[Any, Any]:
         response = requests.get(
-            f"{self.base_api_url}/{endpoint}",
-            headers=self._headers
+            f"{self.base_api_url}/{endpoint}", headers=self._headers
         )
-        response.raise_for_status()
         results = response.json()
         return results
 
-    def trigger_job_run(self):
+    def post_endpoint(
+        self, endpoint: str, json_body: Optional[dict] = None
+    ) -> Dict[Any, Any]:
         response = requests.post(
-            self.jobs_url, headers=self._headers, data=
-            """{
-                "cause": "Triggered via API",
-                "git_sha": "90ec5acea064ff900604b38b0dcdd276e1a9ca5f",
-                "git_branch": "origin/master",
-            }"""
-                # "azure_pull_request_id": 0,
-                # "github_pull_request_id": 0,
-                # "gitlab_merge_request_id": 0,
-                # "schema_override": "string",
-                # "dbt_version_override": "string",
-                # "threads_override": 0,
-                # "target_name_override": "string",
-                # "generate_docs_override": true,
-                # "timeout_seconds_override": 0,
-                # "steps_override": [
-                # "string"
-                # ]
-            # }"""
+            f"{self.base_api_url}/{endpoint}",
+            headers=self._headers,
+            json=json_body,
         )
-        response.raise_for_status()
-        return response.json()['id']
+        results = response.json()
+        return results
 
-    def get_job_status(self, run_id):
-        response = self.get_endpoint(f"{self.base_api_url}/{self.jobs_url}/{run_id}")
-        return response
+    def trigger_job_run(self, data: Optional[dict] = None) -> int:
+        json_body = {"cause": "Triggered via API"}
+        if data:
+            json_body.update(data)
+
+        response = self.post_endpoint(self.jobs_url, json_body=json_body)
+        return response["data"]["id"]
+
+    def get_job_status(self, run_id: int) -> Dict[Any, Any]:
+        response = self.get_endpoint(f"{self.runs_url}/{run_id}")
+        return response["data"]
 
 
-@with_config(sections=("dbt_cloud", ))
-def run_dbt_cloud_job(credentials=dlt.secrets.value, wait_for_outcome=True):
+@with_config(
+    sections=("dbt_cloud",),
+)
+def run_dbt_cloud_job(
+    data: Optional[dict],
+    credentials: Dict[str, str] = dlt.secrets.value,
+    wait_for_outcome: bool = True,
+    wait_seconds: int = 10,
+) -> Dict[Any, Any]:
     operator = DBTCloudClient(**credentials)
-    run_id = operator.trigger_job_run()
+    run_id = operator.trigger_job_run(data=data)
 
+    status = {}
     if wait_for_outcome:
         while True:
             status = operator.get_job_status(run_id)
-            if status['status'] in ['success', 'failed', 'error']:
+            if not status["in_progress"]:
                 break
-            time.sleep(10)  # Wait for 10 seconds before checking again
 
-    return run_id
+            time.sleep(wait_seconds)
 
-
+    return status

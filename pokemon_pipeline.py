@@ -4,11 +4,12 @@ Available resources:
     fruits
     vegetables
 """
-import dlt
-from pokemon import source
 from typing import List
 
+import dlt
+
 from dbt_cloud_function import run_dbt_cloud_job
+from pokemon import source
 
 
 def load(resources: List[str]) -> None:
@@ -27,9 +28,9 @@ def load(resources: List[str]) -> None:
     print(load_info)
 
     # Trigger job run and wait for outcome
-    run_id = run_dbt_cloud_job(wait_for_outcome=True)
+    run_status = run_dbt_cloud_job(wait_for_outcome=True)
 
-    print(run_id)
+    print(run_status)
 
     # Trigger job run without waiting for outcome
     # run_id = run_dbt_cloud_job(wait_for_outcome=False)
@@ -42,5 +43,3 @@ if __name__ == "__main__":
     """
     resources = ["pokemon", "berries"]
     load(resources)
-
-
