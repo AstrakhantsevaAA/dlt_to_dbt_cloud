@@ -83,3 +83,26 @@ def run_dbt_cloud_job(
             time.sleep(wait_seconds)
 
     return status
+
+
+@with_config(
+    sections=("dbt_cloud",),
+)
+def get_dbt_cloud_run_status(
+    run_id: int,
+    credentials: Dict[str, str] = dlt.secrets.value,
+    wait_for_outcome: bool = True,
+    wait_seconds: int = 10,
+) -> Dict[Any, Any]:
+    operator = DBTCloudClient(**credentials)
+    status = operator.get_job_status(run_id)
+
+    if wait_for_outcome and status["in_progress"]:
+        while True:
+            status = operator.get_job_status(run_id)
+            if not status["in_progress"]:
+                break
+
+            time.sleep(wait_seconds)
+
+    return status

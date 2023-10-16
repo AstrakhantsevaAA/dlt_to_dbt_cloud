@@ -27,9 +27,8 @@ def load(resources: List[str]) -> None:
     load_info = pipeline.run(source().with_resources(*resources))
     print(load_info)
 
-    # Trigger job run and wait for outcome
+    # Trigger job run and wait for an outcome
     run_status = run_dbt_cloud_job(wait_for_outcome=True)
-
     print(run_status)
 
     # Trigger job run without waiting for outcome
